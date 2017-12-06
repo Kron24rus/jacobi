@@ -1,5 +1,7 @@
 package com.mikheev.jacobi;
 
+import mpi.MPI;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
@@ -8,54 +10,64 @@ import java.util.Scanner;
 
 public class Solution {
     public static void main(String[] args) throws FileNotFoundException {
-// Для считывания воспользуемся классом Scanner
+        MPI.Init(args);
+        int me = MPI.COMM_WORLD.Rank();
+        int worldSize = MPI.COMM_WORLD.Size();
+
+        int matrixSize = 0;
+        double eps = 0;
+        double[][] matrix = null;
+
+        System.out.println("Hello world from <"+me+"> from <"+worldSize);
+        // Для считывания воспользуемся классом Scanner
         Scanner scanner = new Scanner(new File("input.txt"));
-// Для того, чтобы целая часть вещественного числа
-// отделялась от дробной точкой, а не запятой,
-// необходимо установить русский Locale
+        // Для того, чтобы целая часть вещественного числа
+        // отделялась от дробной точкой, а не запятой,
+        // необходимо установить русский Locale
         scanner.useLocale(new Locale("Russian"));
 
-// Для вывода - классом PrintWriter
+        // Для вывода - классом PrintWriter
         PrintWriter printWriter = new PrintWriter(System.out);
 
-// Считываем размер вводимой матрицы
+        // Считываем размер вводимой матрицы
+
         int size;
-        size = scanner.nextInt();
+        matrixSize = scanner.nextInt();
 
-// Будем хранить матрицу в векторе, состоящем из
-// векторов вещественных чисел
-        double[][] matrix = new double[size][size + 1];
+        // Будем хранить матрицу в векторе, состоящем из
+        // векторов вещественных чисел
+        matrix = new double[matrixSize][matrixSize + 1];
 
-// Матрица будет иметь размер (size) x (size + 1),
-// c учетом столбца свободных членов
-        for (int i = 0; i < size; i++) {
-            for (int j = 0; j < size + 1; j++) {
+        // Матрица будет иметь размер (size) x (size + 1),
+        // c учетом столбца свободных членов
+        for (int i = 0; i < matrixSize; i++) {
+            for (int j = 0; j < matrixSize + 1; j++) {
                 matrix[i][j] = scanner.nextDouble();
             }
         }
         // Считываем необходимую точность решения
-        double eps;
         eps = scanner.nextDouble();
+
         // Введем вектор значений неизвестных на предыдущей итерации,
         // размер которого равен числу строк в матрице, т.е. size,
         // причем согласно методу изначально заполняем его нулями
-        double[] previousVariableValues = new double[size];
-        for (int i = 0; i < size; i++) {
+        double[] previousVariableValues = new double[matrixSize];
+        for (int i = 0; i < matrixSize; i++) {
             previousVariableValues[i] = 0.0;
         }
         // Будем выполнять итерационный процесс до тех пор,
         // пока не будет достигнута необходимая точность
         while (true) {
             // Введем вектор значений неизвестных на текущем шаге
-            double[] currentVariableValues = new double[size];
+            double[] currentVariableValues = new double[matrixSize];
             // Посчитаем значения неизвестных на текущей итерации
             // в соответствии с теоретическими формулами
-            for (int i = 0; i < size; i++) {
+            for (int i = 0; i < matrixSize; i++) {
                 // Инициализируем i-ую неизвестную значением
                 // свободного члена i-ой строки матрицы
-                currentVariableValues[i] = matrix[i][size];
+                currentVariableValues[i] = matrix[i][matrixSize];
                 // Вычитаем сумму по всем отличным от i-ой неизвестным
-                for (int j = 0; j < size; j++) {
+                for (int j = 0; j < matrixSize; j++) {
                     if (i != j) {
                         currentVariableValues[i] -= matrix[i][j] * previousVariableValues[j];
                     }
@@ -65,7 +77,7 @@ public class Solution {
             }
             // Посчитаем текущую погрешность относительно предыдущей итерации
             double error = 0.0;
-            for (int i = 0; i < size; i++) {
+            for (int i = 0; i < matrixSize; i++) {
                 error += Math.abs(currentVariableValues[i] - previousVariableValues[i]);
             }
             // Если необходимая точность достигнута, то завершаем процесс
@@ -76,19 +88,20 @@ public class Solution {
             // что текущие значения неизвестных
             // становятся значениями на предыдущей итерации
             previousVariableValues = currentVariableValues;
-            for (int i = 0; i < size; i++) {
+            for (int i = 0; i < matrixSize; i++) {
                 printWriter.print(previousVariableValues[i] + " ");
             }
             printWriter.print("\n");
         }
         // Выводим найденные значения неизвестных
         printWriter.print("Final:\n");
-        for (int i = 0; i < size; i++) {
+        for (int i = 0; i < matrixSize; i++) {
             printWriter.print(previousVariableValues[i] + " ");
         }
         // После выполнения программы необходимо закрыть
         // потоки ввода и вывода
         scanner.close();
         printWriter.close();
+        MPI.Finalize();
     }
 }
